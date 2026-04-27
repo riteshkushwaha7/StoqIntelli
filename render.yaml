@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: stoqintelli-ml
+    env: docker
+    rootDir: ml-service
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "2"
+

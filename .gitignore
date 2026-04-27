@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.sqlite3
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# ML artifacts
+ml-service/saved_models/*.pt
+ml-service/saved_models/*.pth
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Local environment files
+.env
+.env.*
+*.env
+

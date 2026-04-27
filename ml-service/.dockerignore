@@ -1,0 +1,10 @@
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+data/cache.sqlite
+saved_models/*.pt
+saved_models/*.pth
+
