@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "StoqIntelli",
-  description: "Stock forecasts with selected timeframes, sentiment analysis, and confidence insights."
+  description: "Stock forecasts with selected timeframes and confidence insights."
 };
 
 export default function RootLayout({

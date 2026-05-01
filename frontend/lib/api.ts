@@ -31,22 +31,12 @@ export type PredictionPoint = {
   confidence: number;
   price_change_pct: number;
   price_source: string;
-  sentiment_adjustment: number;
-};
-
-export type SentimentResponse = {
-  score: number;
-  label: "bullish" | "bearish" | "neutral";
-  confidence: number;
-  articles_considered: number;
-  headlines: string[];
 };
 
 export type PredictionResponse = {
   symbol: string;
   current_price: number;
   timestamp: string;
-  sentiment: SentimentResponse;
   predictions: Record<string, PredictionPoint>;
 };
 

@@ -1,2 +1,2 @@
-"""Model definitions for price and sentiment."""
+"""Model definitions for price prediction."""
 

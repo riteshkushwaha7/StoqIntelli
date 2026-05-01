@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import quote_plus
-
 import pandas as pd
 import requests
 import yfinance as yf
@@ -90,11 +88,6 @@ class MarketDataFetcher:
         if self.cache and quote is not None:
             self.cache.set(cache_key, quote, ttl_seconds=12)
         return quote or {}
-
-    def fetch_news_rss_url(self, symbol: str) -> str:
-        normalized = self.normalize_symbol(symbol)
-        query = quote_plus(f"{normalized} stock")
-        return f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
 
     def _ticker_candidates(self, symbol: str) -> list[str]:
         if "." in symbol or symbol.startswith("^") or symbol.endswith("=X"):

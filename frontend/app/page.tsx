@@ -6,8 +6,7 @@ export default function HomePage() {
       <section className="hero">
         <h1 className="title">StoqIntelli</h1>
         <p className="subtitle">
-          Search any stock symbol to view live market trend, selected timeframe forecasts, sentiment direction, and
-          confidence levels.
+          Search any stock symbol to view live market trend, timeframe forecasts, and confidence levels.
         </p>
         <SearchBar />
       </section>

@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from data.cache import HybridCache
 from data.fetcher import MarketDataFetcher
 from data.preprocessor import FeatureEngineer
-from models.sentiment import SentimentAnalyzer
 from pipeline.aggregator import EnsembleAggregator
 from pipeline.predictor import PricePredictor
 from pipeline.trainer import ALL_TIMEFRAMES, LSTMTrainer
@@ -23,21 +22,19 @@ ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "*"
 cache = HybridCache(db_path=CACHE_PATH, default_ttl_seconds=60)
 fetcher = MarketDataFetcher(cache=cache)
 feature_engineer = FeatureEngineer()
-sentiment_analyzer = SentimentAnalyzer(fetcher=fetcher, cache=cache)
-aggregator = EnsembleAggregator(price_weight=0.7, sentiment_weight=0.3)
+aggregator = EnsembleAggregator()
 trainer = LSTMTrainer(saved_models_dir=MODEL_DIR, feature_engineer=feature_engineer)
 predictor = PricePredictor(
     saved_models_dir=MODEL_DIR,
     fetcher=fetcher,
     feature_engineer=feature_engineer,
-    sentiment_analyzer=sentiment_analyzer,
     aggregator=aggregator,
 )
 
 app = FastAPI(
     title="StoqIntelli ML Service",
     version="1.0.0",
-    description="Selected-timeframe LSTM + sentiment ensemble prediction service",
+    description="Selected-timeframe LSTM prediction service",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -155,3 +152,4 @@ def _frame_to_records(frame: pd.DataFrame) -> list[dict]:
                 cleaned[key] = value
         normalized_records.append(cleaned)
     return normalized_records
+
