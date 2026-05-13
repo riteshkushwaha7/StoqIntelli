@@ -7,6 +7,7 @@ import requests
 import yfinance as yf
 
 from data.cache import HybridCache
+from supported_symbols import resolve_exchange_symbol, resolve_market_ticker
 
 
 DEFAULT_PERIOD_BY_INTERVAL: dict[str, str] = {
@@ -81,7 +82,8 @@ class MarketDataFetcher:
             if cached_quote:
                 return cached_quote
 
-        quote = self._fetch_nse_quote(normalized)
+        nse_symbol = resolve_exchange_symbol(normalized)
+        quote = self._fetch_nse_quote(nse_symbol)
         if quote is None:
             quote = self._fetch_yfinance_quote(normalized)
 
@@ -90,11 +92,30 @@ class MarketDataFetcher:
         return quote or {}
 
     def _ticker_candidates(self, symbol: str) -> list[str]:
-        if "." in symbol or symbol.startswith("^") or symbol.endswith("=X"):
-            return [symbol]
-        if symbol.isalpha():
-            return [f"{symbol}.NS", symbol]
-        return [symbol]
+        normalized = self.normalize_symbol(symbol)
+        preferred = resolve_market_ticker(normalized)
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        def _append(candidate: str) -> None:
+            if candidate and candidate not in seen:
+                seen.add(candidate)
+                candidates.append(candidate)
+
+        _append(preferred)
+
+        if "." in normalized or normalized.startswith("^") or normalized.endswith("=X"):
+            return candidates
+
+        plain_preferred = preferred.split(".")[0]
+        if plain_preferred != preferred:
+            _append(plain_preferred)
+
+        if normalized.isalpha():
+            fallback = f"{normalized}.NS"
+            if fallback != preferred:
+                _append(fallback)
+        return candidates
 
     def _sanitize_dataframe(self, frame: pd.DataFrame) -> pd.DataFrame:
         clean = frame.copy()

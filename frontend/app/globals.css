@@ -216,6 +216,61 @@ a:hover {
   font-size: 0.85rem;
 }
 
+/* Dedicated-stock chips and notices. */
+.supported-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.supported-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.supported-chip {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 12px;
+  min-width: 150px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.supported-chip:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(31, 58, 95, 0.12);
+  transform: translateY(-1px);
+}
+
+.supported-chip-symbol {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.supported-chip-name {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.supported-note {
+  font-size: 0.82rem;
+}
+
+.status-supported {
+  color: var(--accent);
+}
+
+.status-generic {
+  color: #7a3e00;
+}
+
 .timeline-list {
   margin: 0;
   padding: 0;

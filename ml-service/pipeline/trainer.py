@@ -73,7 +73,7 @@ class LSTMTrainer:
                 frame = fetcher.fetch_ohlcv(
                     symbol=symbol,
                     interval=config["interval"],
-                    period=config["period"],
+                    period="max",  # Use the longest history for better training.
                 )
                 result = self.train_for_timeframe(
                     frame=frame,

@@ -4,21 +4,36 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+import pandas as pd
+import time
+import yfinance as yf
+
 from data.fetcher import MarketDataFetcher
 from pipeline.trainer import LSTMTrainer, TIMEFRAME_FETCH_CONFIG
+from supported_symbols import MODEL_SUPPORTED_TICKERS, resolve_market_ticker
 
-DEFAULT_SYMBOLS = [
-    ("RELIANCE", "__GLOBAL__"),
-    ("HDFCBANK", "HDFCBANK"),
-    ("BHARTIARTL", "BHARTIARTL"),
-    ("SBIN", "SBIN"),
-    ("ICICIBANK", "ICICIBANK"),
-]
+DEFAULT_SYMBOLS = [("RELIANCE", "__GLOBAL__")]
+DEFAULT_SYMBOLS.extend((symbol, symbol) for symbol in MODEL_SUPPORTED_TICKERS.keys())  # Share the canonical list.
 
 EPOCHS = 6
 LOOKBACK = 60
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
+
+
+def fetch_stock(ticker_ns: str, interval: str | None = None, period: str = "max") -> pd.DataFrame | None:
+    for attempt in range(5):
+        try:
+            history_kwargs = {"period": period, "auto_adjust": True}
+            if interval:
+                history_kwargs["interval"] = interval
+            df = yf.Ticker(ticker_ns).history(**history_kwargs)
+            if df is not None and len(df) > 50:
+                return df
+        except Exception as exc:
+            print(f"Attempt {attempt + 1} failed: {exc}")
+        time.sleep(3 * (attempt + 1))
+    return None
 
 
 def train_symbols(pairs: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
@@ -27,9 +42,15 @@ def train_symbols(pairs: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
   summary: list[dict[str, object]] = []
 
   for base_symbol, model_symbol in pairs:
+    ticker_symbol = resolve_market_ticker(base_symbol)
     for timeframe, cfg in TIMEFRAME_FETCH_CONFIG.items():
       try:
-        frame = fetcher.fetch_ohlcv(symbol=base_symbol, interval=cfg["interval"], period=cfg["period"])
+        raw_frame = fetch_stock(ticker_symbol, interval=cfg["interval"], period="max")
+        if raw_frame is None:
+          raise ValueError(f"No market data found for symbol={base_symbol} interval={cfg['interval']}")
+
+        frame = fetcher._sanitize_dataframe(raw_frame)
+
         info = trainer.train_for_timeframe(
           frame=frame,
           timeframe=timeframe,
@@ -54,6 +75,7 @@ def train_symbols(pairs: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
           "status": "error",
           "detail": str(exc)
         })
+    time.sleep(2)
   return summary
 
 
