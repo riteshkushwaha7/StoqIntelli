@@ -13,13 +13,9 @@ venv/
 env/
 
 # ML artifacts
-ml-service/saved_models/*.pt
-ml-service/saved_models/*.pth
-
-# Node / Next.js
-frontend/node_modules/
-frontend/.next/
-frontend/out/
+saved_models/*.pt
+saved_models/*.pth
+!saved_models/.gitkeep
 
 # Local environment files
 .env

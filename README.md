@@ -1,92 +1,59 @@
 # StoqIntelli
 
-StoqIntelli is a full-stack stock prediction app:
-- `ml-service`: FastAPI + LSTM prediction service
-- `frontend`: Next.js 14 dashboard
-
-Supported forecast timeframes: `15m`, `1d`, `7d`, `1month`, `1y`
-
-Key behavior:
-- Backend computes **only the requested timeframes** (`GET /predict/{symbol}?timeframes=...`).
-- Each timeframe runs its own fetch + model (or adaptive fallback) so outputs differ.
-- No mock or hardcoded price data.
+StoqIntelli is now a single Streamlit experience that bundles the resilient LSTM pipeline, predictor, and UI in one Python service. Users can search NSE symbols, tap dedicated chips for the eight supported stocks, and request custom timeframe forecasts (15m, 1d, 7d, 1month, 1y). Every prediction run fetches fresh Yahoo Finance data, loads the appropriate trained bundle (or shared fallback), and surfaces confidence/direction metadata.
 
 ---
 
-## Local Run
+## Repo layout
 
-### 1) Start backend
+```
+data/                # Fetch/cache helpers + feature engineering inputs
+models/              # LSTM architectures for short/mid/long horizons
+pipeline/            # Trainer + predictor orchestration
+saved_models/        # .pt bundles (per symbol + shared __GLOBAL__ weights)
+streamlit_app.py     # Public UI + orchestrator
+train_global.py      # Batch training entry point for all supported symbols
+requirements.txt     # Python dependencies (FastAPI still available for CLI/API reuse)
+```
+
+---
+
+## Local development
+
 ```bash
-cd ml-service
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate  # or source .venv/bin/activate on macOS/Linux
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+streamlit run streamlit_app.py --server.port 8501
 ```
 
-Optional: train shared LSTM bundles so every timeframe has a non-naive model:
+The UI runs entirely locally and shares the same artifacts as production (reads/writes `saved_models/`).
+
+### Training bundles
+
 ```bash
-cd ml-service
-python train_global.py  # uses RELIANCE data, saves __GLOBAL___{timeframe}.pt
+python train_global.py
+# or train a single symbol/timeframe via pipeline.trainer.LSTMTrainer
 ```
 
-### 2) Start frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Optional frontend env:
-```bash
-NEXT_PUBLIC_ML_SERVICE_URL=http://127.0.0.1:8000
-```
+Each trained timeframe saves `SYMBOL_{timeframe}.pt` under `saved_models/`. Missing dedicated weights automatically fall back to the shared `__GLOBAL___{timeframe}.pt` bundles.
 
 ---
 
-## API
+## Deployment (Render example)
 
-- `GET /health`
-- `GET /stock/{symbol}`
-- `GET /predict/{symbol}?timeframes=15m,1month`
-- `POST /train/{symbol}?timeframes=15m,1d`
+1. Push the repo to GitHub.
+2. Render automatically detects `render.yaml` and provisions a Python service rooted at the repo.
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0`
+5. Health check path: `/`
 
----
-
-## Production Deployment
-
-### A) Push code to GitHub
-```bash
-git init
-git add .
-git commit -m "stoqintelli prod"
-git branch -M main
-git remote add origin https://github.com/<you>/StoqIntelli.git
-git push -u origin main
-```
-
-### B) Backend (Render or Railway)
-- Render reads `render.yaml` and provisions a **Python** service.
-- Railway: create a Python service pointing to `ml-service`, set start command `uvicorn main:app --host 0.0.0.0 --port $PORT`.
-- Required env vars:
-  - `ALLOWED_ORIGINS=https://<frontend-domain>`
-  - Optional: `WEB_CONCURRENCY=2` (or higher for more workers)
-- Health check: `/health`
-
-### C) Frontend (Vercel or Railway)
-- Root directory: `frontend`
-- Env vars:
-  - `NEXT_PUBLIC_ML_SERVICE_URL=https://<backend-domain>`
-
-### D) Final sync
-1. Deploy backend first and grab URL.
-2. Deploy frontend with backend URL.
-3. Update backend `ALLOWED_ORIGINS` with final frontend domain and redeploy backend once.
+Set any optional environment variables (e.g., cache TTL overrides) directly in the Render dashboard.
 
 ---
 
 ## Notes
 
-- UI only sends selected timeframes, so backend load scales with user demand.
-- For production backend scaling, raise `WEB_CONCURRENCY` and/or allocate more RAM.
-- Train per-symbol LSTM models via `POST /train/{symbol}` when you have historical data. If a symbol-specific weight is missing, the predictor now checks for shared `__GLOBAL___{timeframe}.pt` weights before falling back to adaptive heuristics.
+- The FastAPI app (`main.py`) and trainer modules remain available for scripting or future API surfaces, but Streamlit is the primary user interface.
+- `saved_models/` should not be committed except for placeholder `.gitkeep`; model artifacts are regenerated during training.
+- Keep your deployment on Python 3.10 (see `runtime.txt`) to guarantee pre-built `pydantic-core` wheels.
