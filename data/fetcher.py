@@ -5,6 +5,7 @@ from typing import Any
 import pandas as pd
 import requests
 import yfinance as yf
+from curl_cffi import requests as cf_requests
 
 from data.cache import HybridCache
 from supported_symbols import resolve_exchange_symbol, resolve_market_ticker
@@ -35,6 +36,24 @@ class MarketDataFetcher:
                 "Referer": "https://www.nseindia.com/",
             }
         )
+        self._yf_session = self._build_yf_session()
+
+    @staticmethod
+    def _build_yf_session() -> cf_requests.Session:
+        session = cf_requests.Session()
+        session.headers.update(
+            {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "keep-alive",
+            }
+        )
+        session.timeout = 15
+        return session
 
     @staticmethod
     def normalize_symbol(symbol: str) -> str:
@@ -55,13 +74,18 @@ class MarketDataFetcher:
         ticker_candidates = self._ticker_candidates(normalized)
         frame = pd.DataFrame()
         for ticker_symbol in ticker_candidates:
-            data = yf.Ticker(ticker_symbol).history(
-                period=resolved_period,
-                interval=interval,
-                auto_adjust=False,
-                actions=False,
-                prepost=False,
-            )
+            try:
+                data = yf.Ticker(ticker_symbol, session=self._yf_session).history(
+                    period=resolved_period,
+                    interval=interval,
+                    auto_adjust=False,
+                    actions=False,
+                    prepost=False,
+                )
+            except Exception as exc:  # noqa: BLE001 - diagnostic for flaky Yahoo responses
+                print(f"[fetch-ohlcv] Failed for {ticker_symbol} ({interval}): {exc}")
+                continue
+
             if not data.empty:
                 frame = data
                 break
@@ -71,7 +95,7 @@ class MarketDataFetcher:
 
         frame = self._sanitize_dataframe(frame)
         if self.cache:
-            self.cache.set(cache_key, self._to_records(frame), ttl_seconds=45)
+            self.cache.set(cache_key, self._to_records(frame), ttl_seconds=300)
         return frame
 
     def fetch_live_quote(self, symbol: str) -> dict[str, Any]:
@@ -88,7 +112,7 @@ class MarketDataFetcher:
             quote = self._fetch_yfinance_quote(normalized)
 
         if self.cache and quote is not None:
-            self.cache.set(cache_key, quote, ttl_seconds=12)
+            self.cache.set(cache_key, quote, ttl_seconds=60)
         return quote or {}
 
     def _ticker_candidates(self, symbol: str) -> list[str]:
@@ -148,7 +172,14 @@ class MarketDataFetcher:
     def _fetch_yfinance_quote(self, symbol: str) -> dict[str, Any] | None:
         candidates = self._ticker_candidates(symbol)
         for ticker_symbol in candidates:
-            hist = yf.Ticker(ticker_symbol).history(period="2d", interval="1d", actions=False)
+            try:
+                hist = yf.Ticker(ticker_symbol, session=self._yf_session).history(
+                    period="2d", interval="1d", actions=False
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[fetch-quote] Failed for {ticker_symbol}: {exc}")
+                continue
+
             if hist.empty:
                 continue
 
