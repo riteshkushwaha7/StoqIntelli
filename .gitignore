@@ -7,15 +7,15 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
+# ML artifacts (trained model weights are committed so deployments can use them)
+!saved_models/.gitkeep
+!saved_models/*.pt
+
 # Python virtual environments
 .venv/
 venv/
 env/
 
-# ML artifacts
-saved_models/*.pt
-saved_models/*.pth
-!saved_models/.gitkeep
 
 # Local environment files
 .env
