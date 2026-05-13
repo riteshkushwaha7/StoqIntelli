@@ -40,20 +40,23 @@ class MarketDataFetcher:
 
     @staticmethod
     def _build_yf_session() -> cf_requests.Session:
-        session = cf_requests.Session()
-        session.headers.update(
-            {
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
-                ),
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Connection": "keep-alive",
-            }
-        )
-        session.timeout = 15
-        return session
+        # curl_cffi's Chrome impersonation gives a real TLS/JA3 fingerprint, which
+        # is required to bypass Yahoo Finance's Cloudflare bot challenge from
+        # cloud hosts (Streamlit Cloud, Render, etc.). yfinance>=0.2.55 supports
+        # passing this session directly.
+        try:
+            return cf_requests.Session(impersonate="chrome")
+        except Exception:  # pragma: no cover - defensive fallback
+            session = cf_requests.Session()
+            session.headers.update(
+                {
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
+                    ),
+                }
+            )
+            return session
 
     @staticmethod
     def normalize_symbol(symbol: str) -> str:
